@@ -50,21 +50,41 @@ walker:pub login {
 
 walker:pub ensure_my_profile {
     has name: str = "";
+    has email: str = "";
+    has role: str = "applicant";
 
     can bootstrap_profile with Root entry {
+        # Anonymous callers run on the shared guest graph, never create accounts there.
+        if jid(root) == jid(root.shared) { report make_error("UNAUTHENTICATED", "Sign in before creating an application profile."); disengage; }
         user = current_app_user();
-        if user is None { report make_error("UNAUTHENTICATED", "Sign in before creating an application profile."); disengage; }
+        if user is None {
+            validation = validate_registration(self.email, "placeholder-password", self.role);
+            if validation is not None { report validation; disengage; }
+            account = User(id="", email=self.email.lower(), credential_hash="", role=bootstrap_role(self.email, self.role));
+            _ = root ++> account;
+            account.id = jid(account);
+            user = account;
+        }
         found = False;
         if user.role == "applicant" {
             for profile in [root -->][?:ApplicantProfile] { if profile.email.lower() == user.email.lower() { found = True; } }
-            if not found { user +>:UserHasApplicantProfile:+> ApplicantProfile(name=self.name, email=user.email, parse_status="pending"); }
+            if not found {
+                profile = ApplicantProfile(name=self.name, email=user.email, parse_status="pending");
+                _ = root ++> profile;
+                user +>:UserHasApplicantProfile:+> profile;
+            }
         } elif user.role == "agent" {
             for profile in [root -->][?:AgentProfile] { if profile.email.lower() == user.email.lower() { found = True; } }
-            if not found { user +>:UserHasAgentProfile:+> AgentProfile(name=self.name, email=user.email); }
-        } elif user.role == "company_admin" {
-            for company in [root.shared -->][?:Company] { for owner in [user ->:UserHasCompany:->] { if jid(company) == jid(owner) { found = True; } } }
             if not found {
-                company = root.shared ++> Company(name=self.name, status="pending", verified=False);
+                agent = AgentProfile(name=self.name, email=user.email);
+                _ = root ++> agent;
+                user +>:UserHasAgentProfile:+> agent;
+            }
+        } elif user.role == "company_admin" {
+            for owned in [user ->:UserHasCompany:->] { found = True; }
+            if not found {
+                company = Company(name=self.name, status="pending", verified=False);
+                _ = root.shared ++> company;
                 _ = publish_company(company);
                 user +>:UserHasCompany:+> company;
             }

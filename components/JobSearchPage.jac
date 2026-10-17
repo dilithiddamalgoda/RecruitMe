@@ -1,4 +1,4 @@
-import from "@jac/runtime" { Link, jid }
+import from "@jac/runtime" { Link }
 sv import from hr.CompanyJobs { Job, search_jobs }
 cl import from .RecruitmentShell { HavenhireLayout, SectionCard }
 cl import from .ui.input { Input }
@@ -51,7 +51,7 @@ cl def:pub JobSearchPage() -> JsxPage {
             {for job in jobs {
                 title = str(job["title"]);
                 slug = title.lower().replace(" ", "-");
-                <Card key={jid(job)} className="shadow-sm transition-shadow hover:shadow-md">
+                <Card key={str(job["_jac_id"])} className="shadow-sm transition-shadow hover:shadow-md">
                     <CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle>{title}</CardTitle><CardDescription>{str(job["category"]) + " · " + str(job["working_location"]["city"])}</CardDescription></div><Badge variant="secondary">{str(job["employment_type"])}</Badge></div></CardHeader>
                     <CardContent className="flex flex-col gap-4"><p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">{str(job["description"])}</p><div className="flex items-center justify-between border-t pt-3 text-xs text-muted-foreground"><span>{str(job["available_spots"]) + " openings"}</span><span>{str(job["experience_level"])}</span></div><Link to={"/jobs/" + slug} className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground">{"View job"}</Link></CardContent>
                 </Card>

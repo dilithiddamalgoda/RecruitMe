@@ -1,5 +1,5 @@
 import from "@jac/runtime" { jacLogin, jacSignup, useNavigate }
-sv import from hr.Auth { ensure_my_profile, login }
+sv import from hr.Auth { ensure_my_profile }
 cl import from .RecruitmentShell { HavenhireLayout }
 cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
 cl import from .ui.input { Input }
@@ -22,25 +22,37 @@ cl def:pub AuthPage() -> JsxPage {
     async def submit_auth {
         busy = True;
         message = "";
-        if mode == "register" {
-            registration: dict | None = None;
-            login_ok: bool = False;
-            registration = await jacSignup(email, password);
-            if not registration["success"] { message = str(registration["error"]); busy = False; return; }
+        signup_result: dict | None = None;
+        login_ok: bool = False;
+        info: any = None;
+        target_role: str = role;
+        try {
+            if mode == "register" {
+                signup_result = await jacSignup(email, password);
+                if not signup_result["success"] { message = str(signup_result["error"]); busy = False; return; }
+            }
             login_ok = await jacLogin(email, password);
-            if not login_ok { message = "Registration succeeded but sign in did not. Try signing in."; busy = False; return; }
-            profile_setup = root spawn ensure_my_profile(name=display_name);
-        } else {
-            auth_result = root spawn login(email=email, password=password);
-            auth_data: any = auth_result.reports[0] if auth_result.reports and len(auth_result.reports) > 0 else None;
-            if auth_data is None or auth_data["ok"] == False { message = "Email or password is incorrect."; busy = False; return; }
-            login_ok = await jacLogin(email, password);
-            if not login_ok { message = "Email or password is incorrect."; busy = False; return; }
-            profile_setup = root spawn ensure_my_profile(name=display_name);
+            if not login_ok {
+                message = "Registration succeeded but sign in did not. Try signing in." if mode == "register" else "Email or password is incorrect.";
+                busy = False;
+                return;
+            }
+            setup = root spawn ensure_my_profile(name=display_name, email=email, role=role);
+            info = setup.reports[0] if setup.reports and len(setup.reports) > 0 else None;
+            if info is None or info["ok"] == False {
+                message = str(info["message"]) if info is not None else "Your profile could not be prepared. Please try again.";
+                busy = False;
+                return;
+            }
+            target_role = str(info["role"]);
+        } except Exception {
+            message = "Something went wrong while signing in. Please try again.";
+            busy = False;
+            return;
         }
         busy = False;
-        if role == "applicant" { nav("/applicant"); }
-        elif role == "agent" { nav("/agent"); }
+        if target_role == "applicant" { nav("/applicant"); }
+        elif target_role == "agent" { nav("/agent"); }
         else { nav("/company"); }
     }
     login_variant = "default" if mode == "login" else "outline";

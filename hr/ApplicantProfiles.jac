@@ -129,7 +129,7 @@ walker:pub import_linkedin_pdf {
             with open(path, "wb") as resume_file { _ = resume_file.write(encrypted); }
         } except Exception { profile.parse_status = "failed"; report make_error("STORAGE_FAILED", "Resume could not be stored securely. Enter your profile manually."); disengage; }
         profile.name = extracted.name or "";
-        profile.email = extracted.email or user.email;
+        profile.email = user.email;  # keep the account email: it is how the profile is found
         profile.phone = extracted.phone or "";
         profile.location = extracted.location or "";
         profile.summary = extracted.summary or "";
@@ -165,7 +165,7 @@ walker:pub update_profile {
         if profile is None { report make_error("PROFILE_NOT_FOUND", "Applicant profile was not found."); disengage; }
         user = [root -->][?:User][0];
         profile.name = self.name;
-        profile.email = self.email;
+        profile.email = user.email;  # keep the account email: it is how the profile is found
         profile.phone = self.phone;
         profile.location = self.location;
         profile.summary = self.summary;
