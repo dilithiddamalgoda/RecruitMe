@@ -35,6 +35,7 @@ cl def:pub JobSearchPage() -> JsxPage {
         loading = False;
     }
     async can with entry { await run_search(); }
+    safe_jobs: list[Job] = jobs or [];
     return <HavenhireLayout title="Find your next role" subtitle="Explore open opportunities and filter for what matters to you.">
         <Card className="shadow-sm"><CardContent className="grid gap-3 pt-6 sm:grid-cols-2 lg:grid-cols-5">
             <label className="flex flex-col gap-1 text-sm font-medium">{"Keyword"}<Input value={keyword} onChange={change_keyword} placeholder="Role, skill, or company" /></label>
@@ -43,12 +44,12 @@ cl def:pub JobSearchPage() -> JsxPage {
             <label className="flex flex-col gap-1 text-sm font-medium">{"Employment"}<Input value={employment_type} onChange={change_employment} placeholder="Full-time" /></label>
             <Button onClick={run_search} disabled={loading} className="self-end">{"Search roles"}</Button>
         </CardContent></Card>
-        {if len(error) > 0 { <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</p> }}
-        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">{"Open opportunities"}</h2><span className="text-sm text-muted-foreground tabular-nums">{str(total) + " roles"}</span></div>
+        {if error and len(error) > 0 { <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</p> }}
+        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">{"Open opportunities"}</h2><span className="text-sm text-muted-foreground tabular-nums">{str(total or 0) + " roles"}</span></div>
         {if loading { <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">{"Loading jobs…"}</div> }}
-        {if not loading and len(jobs) == 0 { <Empty className="rounded-xl border bg-card py-10"><EmptyHeader><EmptyTitle>{"No matching jobs"}</EmptyTitle><EmptyDescription>{"Try a broader search or clear one of your filters."}</EmptyDescription></EmptyHeader></Empty> }}
+        {if not loading and len(safe_jobs) == 0 { <Empty className="rounded-xl border bg-card py-10"><EmptyHeader><EmptyTitle>{"No matching jobs"}</EmptyTitle><EmptyDescription>{"Try a broader search or clear one of your filters."}</EmptyDescription></EmptyHeader></Empty> }}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {for job in jobs {
+            {for job in safe_jobs {
                 title = str(job["title"]);
                 slug = title.lower().replace(" ", "-");
                 <Card key={str(job["_jac_id"])} className="shadow-sm transition-shadow hover:shadow-md">
@@ -57,6 +58,6 @@ cl def:pub JobSearchPage() -> JsxPage {
                 </Card>
             }}
         </div>
-        <div className="flex justify-end gap-2"><Button variant="outline" disabled={page <= 1} onClick={lambda { page = page - 1; run_search(); }}>{"Previous"}</Button><span className="self-center px-2 text-sm text-muted-foreground">{"Page " + str(page)}</span><Button variant="outline" disabled={len(jobs) < 12} onClick={lambda { page = page + 1; run_search(); }}>{"Next"}</Button></div>
+        <div className="flex justify-end gap-2"><Button variant="outline" disabled={page <= 1} onClick={lambda { page = page - 1; run_search(); }}>{"Previous"}</Button><span className="self-center px-2 text-sm text-muted-foreground">{"Page " + str(page)}</span><Button variant="outline" disabled={len(safe_jobs) < 12} onClick={lambda { page = page + 1; run_search(); }}>{"Next"}</Button></div>
     </HavenhireLayout>;
 }
