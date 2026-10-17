@@ -31,21 +31,27 @@ cl def:pub ApplicantDashboardPage() -> JsxPage {
     async def load_dashboard {
         loading = True;
         try {
-            profile = await get_my_profile();
-            name = str(profile["name"]); email = str(profile["email"]); phone = str(profile["phone"]); location = str(profile["location"]); summary = str(profile["summary"]);
-            skills = ", ".join(profile["skills"] as list[str]);
-            response: any = await get_my_notifications();
-            if response["reports"] { notifications = response["reports"] as list[any]; }
+            profile_result = root spawn get_my_profile();
+            if profile_result.reports and len(profile_result.reports) > 0 {
+                profile = profile_result.reports[0];
+                name = str(profile.name); email = str(profile.email); phone = str(profile.phone); location = str(profile.location); summary = str(profile.summary);
+                skills = ", ".join(profile.skills);
+            }
+            notification_result = root spawn get_my_notifications();
+            if notification_result.reports and len(notification_result.reports) > 0 { notifications = notification_result.reports[0] as list[any]; }
         } except Exception { message = "Sign in as an applicant to manage your profile."; }
         loading = False;
     }
     async def save_profile {
-        try { profile = await update_profile(name, email, skills.split(","), phone, location, summary, profile["education"] as list[dict], profile["experience"] as list[dict], profile["certifications"] as list[str]); message = "Profile saved. Confirm it before applying."; } except Exception { message = "Profile could not be saved. Check required fields and sign-in."; }
+        try {
+            update_result = root spawn update_profile(name=name, email=email, phone=phone, location=location, summary=summary, skills=skills.split(","), education=profile.education, experience=profile.experience, certifications=profile.certifications);
+            if update_result.reports and len(update_result.reports) > 0 { profile = update_result.reports[0]; message = "Profile saved. Confirm it before applying."; }
+        } except Exception { message = "Profile could not be saved. Check required fields and sign-in."; }
     }
-    async def confirm_profile_now { try { profile = await confirm_profile(); message = "Profile confirmed. You can apply to open jobs."; } except Exception { message = "Confirm your profile after reviewing your details."; } }
-    async def delete_data { try { _ = await delete_my_data(); profile = None; message = "Your profile data and resume were deleted."; } except Exception { message = "Your data could not be deleted right now."; } }
-    async def read_notification(notification_id: str) { _ = await mark_read(notification_id); await load_dashboard(); }
-    async def upload_resume { message = "Use secure PDF import: PDFs only, up to 5 MB and 10 pages. Review parsed details before confirming."; }
+    async def confirm_profile_now { try { result = root spawn confirm_profile(); if result.reports and len(result.reports) > 0 { profile = result.reports[0]; message = "Profile confirmed. You can apply to open jobs."; } } except Exception { message = "Confirm your profile after reviewing your details."; } }
+    async def delete_data { try { result = root spawn delete_my_data(); profile = None; message = "Your profile data and resume were deleted."; } except Exception { message = "Your data could not be deleted right now."; } }
+    async def read_notification(notification_id: str) { _ = root spawn mark_read(notification_id=notification_id); await load_dashboard(); }
+    async def upload_resume { message = "Secure PDF import is available through the authenticated resume-import endpoint. Review parsed profile data and confirm it before applying."; }
     async can with entry { await load_dashboard(); }
     status_label = "Confirmed" if profile and profile["parse_status"] == "confirmed" else ("Needs review" if profile and profile["parse_status"] == "parsed" else "Incomplete");
     return <HavenhireLayout title="Applicant workspace" subtitle="Keep your profile current and stay on top of application updates.">

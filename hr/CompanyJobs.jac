@@ -4,6 +4,7 @@ import from hr.Authorization { require_role }
 import from hr.Audit { log_status_change }
 import from hr.Notifications { notify_job_followers }
 import from shared.Errors { AppError, make_error }
+import from hr.RecruitmentIntegration { shared_companies, shared_jobs, publish_company, publish_job }
 
 walker:pub create_company {
     has name: str;
@@ -15,7 +16,8 @@ walker:pub create_company {
         if denial is not None { report denial; disengage; }
         if len(self.name.strip()) == 0 { report make_error("INVALID_COMPANY", "Company name is required.", "name"); disengage; }
         user = [root -->][?:User][0];
-        company = root ++> Company(name=self.name, description=self.description, address=self.address, status="pending");
+        company = root.shared ++> Company(name=self.name, description=self.description, address=self.address, status="pending");
+        _ = publish_company(company);
         user +>:UserHasCompany:+> company;
         report company;
     }
@@ -27,7 +29,7 @@ walker:pub verify_company {
     can verify with Root entry {
         denial = require_role(["admin", "system"]);
         if denial is not None { report denial; disengage; }
-        for company in [root -->][?:Company] {
+        for company in shared_companies() {
             if jid(company) == self.company_id {
                 old_status = company.status;
                 company.verified = True;
@@ -49,7 +51,7 @@ walker:pub add_agent_to_company {
         denial = require_role(["company_admin"]);
         if denial is not None { report denial; disengage; }
         company: Company | None = None;
-        for candidate in [root -->][?:Company] { if jid(candidate) == self.company_id { company = candidate; } }
+        for candidate in shared_companies() { if jid(candidate) == self.company_id { company = candidate; } }
         if company is None { report make_error("COMPANY_NOT_FOUND", "Company was not found."); disengage; }
         company_node = company as Company;
         actor = [root -->][?:User][0];
@@ -99,7 +101,7 @@ walker:pub create_job {
         now = datetime.now(deadline_dt.tzinfo);
         if deadline_dt <= now { report make_error("INVALID_DEADLINE", "Deadline must be in the future.", "deadline"); disengage; }
         company: Company | None = None;
-        for candidate in [root -->][?:Company] { if jid(candidate) == self.company_id { company = candidate; } }
+        for candidate in shared_companies() { if jid(candidate) == self.company_id { company = candidate; } }
         if company is None { report make_error("COMPANY_NOT_FOUND", "Company was not found."); disengage; }
         company_node = company as Company;
         if not company_node.verified { report make_error("COMPANY_UNVERIFIED", "Only verified companies may post jobs."); disengage; }
@@ -107,7 +109,9 @@ walker:pub create_job {
         owns_company = False;
         for owned in [actor ->:UserHasCompany:->] { if jid(owned) == self.company_id { owns_company = True; } }
         if not owns_company { report make_error("FORBIDDEN", "You can post jobs only for your company."); disengage; }
-        job = Job(title=self.title, description=self.description, category=self.category, role=self.role, available_spots=self.available_spots, salary={"min": self.salary_min, "max": self.salary_max, "currency": self.currency, "period": self.salary_period}, working_location={"type": self.location_type, "city": self.city}, employment_type=self.employment_type, experience_level=self.experience_level, must_have_skills=self.must_have_skills, nice_to_have_skills=self.nice_to_have_skills, required_skills=self.must_have_skills + self.nice_to_have_skills, deadline=self.deadline, status="open");
+        directory = shared_directory();
+        job = directory ++> Job(title=self.title, description=self.description, category=self.category, role=self.role, available_spots=self.available_spots, salary={"min": self.salary_min, "max": self.salary_max, "currency": self.currency, "period": self.salary_period}, working_location={"type": self.location_type, "city": self.city}, employment_type=self.employment_type, experience_level=self.experience_level, must_have_skills=self.must_have_skills, nice_to_have_skills=self.nice_to_have_skills, required_skills=self.must_have_skills + self.nice_to_have_skills, deadline=self.deadline, status="open");
+        _ = publish_job(job);
         company_node +>:CompanyPosts:+> job;
         _ = log_status_change(actor.id, "Job", jid(job), "draft", "open", "Job posted");
         _ = notify_job_followers(self.company_id, self.title);
@@ -123,11 +127,11 @@ walker:pub assign_agent_to_job {
         denial = require_role(["company_admin"]);
         if denial is not None { report denial; disengage; }
         job: Job | None = None;
-        for candidate in [root -->][?:Job] { if jid(candidate) == self.job_id { job = candidate; } }
+        for candidate in shared_jobs() { if jid(candidate) == self.job_id { job = candidate; } }
         if job is None { report make_error("JOB_NOT_FOUND", "Job was not found."); disengage; }
         state = check_job_open(jid(job));
         if state is not None { report state; disengage; }
-        companies = [root -->][?:Company];
+        companies = shared_companies();
         owner_found = False;
         for company in companies {
             posted = False;
@@ -168,7 +172,7 @@ walker:pub close_job {
         denial = require_role(["company_admin"]);
         if denial is not None { report denial; disengage; }
         actor = [root -->][?:User][0];
-        for company in [root -->][?:Company] {
+        for company in shared_companies() {
             for job in [company ->:CompanyPosts:->] {
                 if jid(job) == self.job_id {
                     owns = False;
@@ -191,7 +195,7 @@ walker:pub close_job {
 def:pub check_job_open(job_id: str) -> AppError | None {
     denial = require_role(["applicant", "agent", "company_admin", "admin", "system"]);
     if denial is not None { return denial; }
-    for job in [root -->][?:Job] {
+    for job in shared_jobs() {
         if jid(job) == job_id {
             if job.status != "open" { return make_error("JOB_CLOSED", "This job is not open."); }
             try { deadline_dt = datetime.fromisoformat(job.deadline); } except ValueError { return make_error("INVALID_DEADLINE", "Job deadline is invalid.", "deadline"); }
@@ -215,7 +219,7 @@ walker:pub auto_close_jobs {
         denial = require_role(["admin", "system"]);
         if denial is not None { report denial; disengage; }
         closed: list[str] = [];
-        for job in [root -->][?:Job] {
+        for job in shared_jobs() {
             if job.status == "open" {
                 try { deadline_dt = datetime.fromisoformat(job.deadline); } except ValueError { skip; }
                 now = datetime.now(deadline_dt.tzinfo);
@@ -247,7 +251,7 @@ walker:pub search_jobs {
         if denial is not None { report denial; disengage; }
         if self.page < 1 or self.page_size < 1 or self.page_size > 100 { report make_error("INVALID_PAGINATION", "Page must be positive and page size must be between 1 and 100."); disengage; }
         found: list[Job] = [];
-        for job in [root -->][?:Job] {
+        for job in shared_jobs() {
             if job.status == "open" {
                 state = check_job_open(jid(job));
                 if state is None {
@@ -281,7 +285,7 @@ walker:pub get_job_by_id {
     can find with Root entry {
         denial = require_role(["applicant", "agent", "company_admin"]);
         if denial is not None { report denial; disengage; }
-        for job in [root -->][?:Job] { if jid(job) == self.job_id { report job; disengage; } }
+        for job in shared_jobs() { if jid(job) == self.job_id { report job; disengage; } }
         report make_error("JOB_NOT_FOUND", "Job was not found.");
     }
 }
@@ -291,7 +295,7 @@ walker:pub get_job_by_slug {
     can find with Root entry {
         denial = require_role(["applicant", "agent", "company_admin"]);
         if denial is not None { report denial; disengage; }
-        for job in [root -->][?:Job] {
+        for job in shared_jobs() {
             candidate = job.title.lower().replace(" ", "-");
             if candidate == self.slug or jid(job) == self.slug { report job; disengage; }
         }
@@ -307,7 +311,7 @@ walker:pub follow_company {
         profiles = [root -->][?:ApplicantProfile];
         if len(profiles) == 0 { report make_error("PROFILE_NOT_FOUND", "Applicant profile was not found."); disengage; }
         company: Company | None = None;
-        for candidate in [root -->][?:Company] { if jid(candidate) == self.company_id { company = candidate; } }
+        for candidate in shared_companies() { if jid(candidate) == self.company_id { company = candidate; } }
         if company is None { report make_error("COMPANY_NOT_FOUND", "Company was not found."); disengage; }
         company_node = company as Company;
         already = False;
@@ -325,7 +329,7 @@ walker:pub unfollow_company {
         profiles = [root -->][?:ApplicantProfile];
         if len(profiles) == 0 { report make_error("PROFILE_NOT_FOUND", "Applicant profile was not found."); disengage; }
         company: Company | None = None;
-        for candidate in [root -->][?:Company] { if jid(candidate) == self.company_id { company = candidate; } }
+        for candidate in shared_companies() { if jid(candidate) == self.company_id { company = candidate; } }
         if company is None { report make_error("COMPANY_NOT_FOUND", "Company was not found."); disengage; }
         edges = [edge profiles[0] ->:ApplicantFollows:-> company];
         for link in edges { del link; }

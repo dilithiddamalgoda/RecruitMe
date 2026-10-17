@@ -1,9 +1,14 @@
+node SharedDirectory {
+    has namespace: str = "recruitme-global";
+}
+
 node User {
     has id: str = "";
     has email: str = "";
-    has password_hash: str = "";
+    has credential_hash: str = "";
     has role: str = "applicant";
 }
+
 
 node ApplicantProfile {
     has name: str = "";
@@ -111,6 +116,8 @@ node AuditLog {
     has created_at: str = "";
 }
 
+edge DirectoryHasCompany: SharedDirectory --> Company {}
+edge DirectoryHasJob: SharedDirectory --> Job {}
 edge CompanyEmploys: Company --> AgentProfile {}
 edge CompanyPosts: Company --> Job {}
 edge JobAssignedTo: Job --> AgentProfile {}

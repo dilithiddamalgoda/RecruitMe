@@ -7,9 +7,9 @@ import from datetime { datetime }
 import from jaclang.byllm.lib { Model }
 import from hr.domain { User, ApplicantProfile, AgentProfile, Company, Job, Application, AIEvaluationLog, Notification, ApplicantSubmitted, ApplicationFor, JobAssignedTo, CompanyPosts, UserHasCompany, UserHasAgentProfile }
 import from hr.Notifications { notify }
-import from hr.Authorization { require_role }
+import from hr.Authorization { require_role, current_app_user }
 import from hr.Audit { log_status_change, record_audit }
-import from hr.Notifications { notify }
+import from hr.RecruitmentIntegration { shared_jobs, shared_companies }
 import from hr.CompanyJobs { check_job_open }
 import from shared.Errors { AppError, make_error }
 
@@ -169,15 +169,15 @@ walker:pub apply_to_job {
     can apply with Root entry {
         denial = require_role(["applicant"]);
         if denial is not None { report denial; disengage; }
-        users = [root -->][?:User];
-        profiles = [root -->][?:ApplicantProfile];
-        if len(users) == 0 or len(profiles) == 0 { report make_error("PROFILE_NOT_FOUND", "Applicant profile is required."); disengage; }
-        user = users[0];
-        profile = profiles[0];
-        if profile.email != user.email { report make_error("PROFILE_FORBIDDEN", "Applicant profile does not belong to this account."); disengage; }
-        if profile.parse_status != "confirmed" { report make_error("PROFILE_UNCONFIRMED", "Confirm your profile before applying."); disengage; }
+        user = current_app_user();
+        if user is None { report make_error("UNAUTHENTICATED", "Sign in before applying."); disengage; }
+        profile: ApplicantProfile | None = None;
+        for candidate in [root -->][?:ApplicantProfile] { if candidate.email.lower() == user.email.lower() { profile = candidate; } }
+        if profile is None { report make_error("PROFILE_NOT_FOUND", "Applicant profile is required."); disengage; }
+        profile_node = profile as ApplicantProfile;
+        if profile_node.parse_status != "confirmed" { report make_error("PROFILE_UNCONFIRMED", "Confirm your profile before applying."); disengage; }
         job: Job | None = None;
-        for candidate in [root -->][?:Job] { if jid(candidate) == self.job_id { job = candidate; } }
+        for candidate in shared_jobs() { if jid(candidate) == self.job_id { job = candidate; } }
         if job is None { report make_error("JOB_NOT_FOUND", "Job was not found."); disengage; }
         current_job = job as Job;
         state = check_job_open(jid(current_job));
@@ -188,10 +188,10 @@ walker:pub apply_to_job {
             }
         }
         if _evaluation_rate_limited(user.id) { report make_error("RATE_LIMITED", "Suitability evaluation limit reached. Try again later."); disengage; }
-        snapshot = _redacted_snapshot(profile);
+        snapshot = _redacted_snapshot(profile_node);
         evaluation = _make_evaluation(current_job, snapshot);
         application = Application(status="applied", match_score=evaluation.score, matched_skills=evaluation.matched, missing_skills=evaluation.missing, profile_snapshot=snapshot, ai_verdict=evaluation.verdict, ai_status=evaluation.ai_status, applied_at=datetime.now().isoformat(), evaluated_at=datetime.now().isoformat());
-        profile +>:ApplicantSubmitted:+> application;
+        profile_node +>:ApplicantSubmitted:+> application;
         application +>:ApplicationFor:+> current_job;
         _ = root ++> AIEvaluationLog(application_id=jid(application), model=os.environ.get("LLM_MODEL", "gpt-4o-mini"), input_hash=evaluation.cache_hash, output_json=evaluation.verdict, latency_ms=0, created_at=datetime.now().isoformat());
         report {"application_id": jid(application), "status": application.status, "match_score": application.match_score, "matched_skills": application.matched_skills, "missing_skills": application.missing_skills, "ai_verdict": application.ai_verdict, "ai_status": application.ai_status, "advisory_only": True};
@@ -209,7 +209,8 @@ walker:pub evaluate_application {
         for candidate in [root -->][?:Application] { if jid(candidate) == self.application_id { app = candidate; } }
         if app is None { report make_error("APPLICATION_NOT_FOUND", "Application was not found."); disengage; }
         current_app = app as Application;
-        user = [root -->][?:User][0];
+        user = current_app_user();
+        if user is None { report make_error("UNAUTHENTICATED", "Sign in is required."); disengage; }
         if user.role == "applicant" and current_app.ai_status != "pending" and not self.requested_by_agent {
             report {"application_id": self.application_id, "match_score": current_app.match_score, "ai_verdict": current_app.ai_verdict, "ai_status": current_app.ai_status, "advisory_only": True};
             disengage;
@@ -259,7 +260,8 @@ walker:pub check_suitability {
     can check with Root entry {
         denial = require_role(["applicant", "agent", "company_admin"]);
         if denial is not None { report denial; disengage; }
-        user = [root -->][?:User][0];
+        user = current_app_user();
+        if user is None { report make_error("UNAUTHENTICATED", "Sign in is required."); disengage; }
         job: Job | None = None;
         for candidate in [root -->][?:Job] { if jid(candidate) == self.job_id { job = candidate; } }
         if job is None { report make_error("JOB_NOT_FOUND", "Job was not found."); disengage; }
@@ -321,7 +323,8 @@ walker:pub update_application_status {
         if self.to_status == "hired" and current_app.status != "shortlisted" and current_app.status != "interview_scheduled" { report make_error("INVALID_TRANSITION", "Only shortlisted or interview-stage applications can be hired."); disengage; }
         allowed = (current_app.status == "applied" and self.to_status in ["screened", "rejected"]) or (current_app.status == "screened" and self.to_status in ["shortlisted", "rejected"]) or (current_app.status == "shortlisted" and self.to_status in ["interview_scheduled", "rejected", "hired"]) or (current_app.status == "interview_scheduled" and self.to_status in ["shortlisted", "rejected", "hired"]);
         if not allowed { report make_error("INVALID_TRANSITION", "Application status transition is not allowed."); disengage; }
-        user = [root -->][?:User][0];
+        user = current_app_user();
+        if user is None { report make_error("UNAUTHENTICATED", "Sign in is required."); disengage; }
         if user.role == "company_admin" {
             permitted = False;
             for company in [root -->][?:Company] {
@@ -367,7 +370,8 @@ walker:pub withdraw_application {
     can withdraw with Root entry {
         denial = require_role(["applicant"]);
         if denial is not None { report denial; disengage; }
-        user = [root -->][?:User][0];
+        user = current_app_user();
+        if user is None { report make_error("UNAUTHENTICATED", "Sign in is required."); disengage; }
         profile: ApplicantProfile | None = None;
         for candidate in [root -->][?:ApplicantProfile] { if candidate.email == user.email { profile = candidate; } }
         if profile is None { report make_error("PROFILE_NOT_FOUND", "Applicant profile was not found."); disengage; }

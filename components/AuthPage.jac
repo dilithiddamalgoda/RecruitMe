@@ -1,5 +1,5 @@
-import from "@jac/runtime" { jacLogin, useNavigate }
-sv import from hr.Auth { register }
+import from "@jac/runtime" { jacLogin, jacSignup, useNavigate }
+sv import from hr.Auth { ensure_my_profile, login }
 cl import from .RecruitmentShell { HavenhireLayout }
 cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
 cl import from .ui.input { Input }
@@ -23,14 +23,20 @@ cl def:pub AuthPage() -> JsxPage {
         busy = True;
         message = "";
         if mode == "register" {
-            registration: any = await register(email, password, role, display_name);
+            registration: dict | None = None;
             login_ok: bool = False;
-            if registration["error"] { message = str(registration["message"]); busy = False; return; }
+            registration = await jacSignup(email, password);
+            if not registration["success"] { message = str(registration["error"]); busy = False; return; }
             login_ok = await jacLogin(email, password);
             if not login_ok { message = "Registration succeeded but sign in did not. Try signing in."; busy = False; return; }
+            profile_setup = root spawn ensure_my_profile(name=display_name);
         } else {
+            auth_result = root spawn login(email=email, password=password);
+            auth_data: any = auth_result.reports[0] if auth_result.reports and len(auth_result.reports) > 0 else None;
+            if auth_data is None or auth_data["ok"] == False { message = "Email or password is incorrect."; busy = False; return; }
             login_ok = await jacLogin(email, password);
             if not login_ok { message = "Email or password is incorrect."; busy = False; return; }
+            profile_setup = root spawn ensure_my_profile(name=display_name);
         }
         busy = False;
         if role == "applicant" { nav("/applicant"); }

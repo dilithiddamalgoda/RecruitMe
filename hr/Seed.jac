@@ -1,6 +1,7 @@
 import from datetime { datetime, timedelta }
 import from hr.domain { User, ApplicantProfile, AgentProfile, Company, Job, Application, Interview, AgentAvailability, UserHasApplicantProfile, UserHasAgentProfile, UserHasCompany, CompanyEmploys, CompanyPosts, JobAssignedTo, ApplicantSubmitted, ApplicationFor, ApplicationScheduledAs, InterviewConductedBy, AgentHasSlot }
 import from hr.Authorization { require_role }
+import from hr.RecruitmentIntegration { shared_directory, publish_company, publish_job }
 import from shared.Errors { AppError, make_error }
 
 walker:pub seed_demo_data {
@@ -15,8 +16,11 @@ walker:pub seed_demo_data {
         _ = root ++> User(id="demo-admin", email="admin@havenhire.test", role="admin");
         company_admin1 = root ++> User(id="demo-company-1", email="talent@northstar.test", role="company_admin");
         company_admin2 = root ++> User(id="demo-company-2", email="people@harbor.test", role="company_admin");
-        company1 = root ++> Company(name="Northstar Systems", description="Product engineering and data teams", address="Toronto", verified=True, status="verified");
-        company2 = root ++> Company(name="Harbor Health", description="Community health technology", address="Vancouver", verified=False, status="pending");
+        directory = shared_directory();
+        company1 = directory ++> Company(name="Northstar Systems", description="Product engineering and data teams", address="Toronto", verified=True, status="verified");
+        company2 = directory ++> Company(name="Harbor Health", description="Community health technology", address="Vancouver", verified=False, status="pending");
+        _ = publish_company(company1);
+        _ = publish_company(company2);
         company_admin1 +>:UserHasCompany:+> company1;
         company_admin2 +>:UserHasCompany:+> company2;
         agents: list[AgentProfile] = [];
@@ -43,7 +47,8 @@ walker:pub seed_demo_data {
             deadline = (datetime.now() + timedelta(days=30)).isoformat();
             if index == 5 { deadline = (datetime.now() - timedelta(days=1)).isoformat(); }
             spots = 2 if index < 2 else (1 if index == 2 else 0);
-            job = root ++> Job(title=title, description="Build excellent teams and deliver thoughtful hiring outcomes.", category="Technology" if index % 2 == 0 else "People", role=title, available_spots=spots, required_skills=["Python", "Recruiting"], must_have_skills=["Python"], nice_to_have_skills=["Data analysis"], min_experience_years=2.0, education_requirement="Bachelor degree", threshold=55.0, deadline=deadline, status=state);
+            job = directory ++> Job(title=title, description="Build excellent teams and deliver thoughtful hiring outcomes.", category="Technology" if index % 2 == 0 else "People", role=title, available_spots=spots, required_skills=["Python", "Recruiting"], must_have_skills=["Python"], nice_to_have_skills=["Data analysis"], min_experience_years=2.0, education_requirement="Bachelor degree", threshold=55.0, deadline=deadline, status=state);
+            _ = publish_job(job);
             if index < 4 { company1 +>:CompanyPosts:+> job; } else { company2 +>:CompanyPosts:+> job; }
             if index < 3 { job +>:JobAssignedTo:+> agents[index]; }
             jobs.append(job);
