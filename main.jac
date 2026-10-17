@@ -1,4 +1,4 @@
-import from hr.Auth { register, login }
+import from hr.Auth { register, login, ensure_my_profile }
 import from hr.CompanyJobs { create_company, verify_company, add_agent_to_company, create_job, assign_agent_to_job, close_job, auto_close_jobs, check_job_open, search_jobs, get_job_by_id, get_job_by_slug, follow_company, unfollow_company }
 import from hr.Notifications { notify, notify_job_followers, get_my_notifications, mark_read }
 import from hr.ApplicantProfiles { import_linkedin_pdf, update_profile, confirm_profile, get_my_profile, delete_my_data }
