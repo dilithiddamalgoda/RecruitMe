@@ -21,6 +21,9 @@ menuAccent = "subtle"
 menuColor = "default"
 
 [dependencies]
+pypdf = ">=5.0.0"
+cryptography = ">=44.0.0"
+
 [dependencies.npm]
 react = "^18.2.0"
 react-dom = "^18.2.0"
