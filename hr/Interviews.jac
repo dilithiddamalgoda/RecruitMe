@@ -39,9 +39,10 @@ walker:pub add_availability {
             existing_start = _parse_time(slot.start);
             existing_end = _parse_time(slot.end);
             if existing_start is not None and existing_end is not None and _times_overlap(start_dt, end_dt, existing_start, existing_end) { report make_error("SLOT_OVERLAP", "Availability slots cannot overlap."); disengage; }
-        }
-        created = agent ++> AgentAvailability(start=self.start, end=self.end, timezone=self.timezone, is_booked=False);
-        report created;
+        slot = AgentAvailability(start=self.start, end=self.end, timezone=self.timezone, is_booked=False);
+        root ++> slot;
+        agent +>:AgentHasSlot:+> slot;
+        report slot;
     }
 }
 

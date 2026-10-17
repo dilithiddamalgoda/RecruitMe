@@ -23,7 +23,8 @@ walker:pub register {
         }
         resolved_role = bootstrap_role(self.email, self.role);
         encoded = bcrypt.hashpw(self.password.encode(), bcrypt.gensalt());
-        account = root ++> User(id="", email=self.email.lower(), credential_hash=encoded.decode(), role=resolved_role);
+        account = User(id="", email=self.email.lower(), credential_hash=encoded.decode(), role=resolved_role);
+        root ++> account;
         account.id = jid(account);
         report {"ok": True, "user_id": account.id, "role": account.role};
     }
@@ -57,14 +58,23 @@ walker:pub ensure_my_profile {
         found = False;
         if user.role == "applicant" {
             for profile in [root -->][?:ApplicantProfile] { if profile.email.lower() == user.email.lower() { found = True; } }
-            if not found { user +>:UserHasApplicantProfile:+> ApplicantProfile(name=self.name, email=user.email, parse_status="pending"); }
+            if not found {
+                new_profile = ApplicantProfile(name=self.name, email=user.email, parse_status="pending");
+                root ++> new_profile;
+                user +>:UserHasApplicantProfile:+> new_profile;
+            }
         } elif user.role == "agent" {
             for profile in [root -->][?:AgentProfile] { if profile.email.lower() == user.email.lower() { found = True; } }
-            if not found { user +>:UserHasAgentProfile:+> AgentProfile(name=self.name, email=user.email); }
+            if not found {
+                new_agent = AgentProfile(name=self.name, email=user.email);
+                root ++> new_agent;
+                user +>:UserHasAgentProfile:+> new_agent;
+            }
         } elif user.role == "company_admin" {
             for company in [root.shared -->][?:Company] { for owner in [user ->:UserHasCompany:->] { if jid(company) == jid(owner) { found = True; } } }
             if not found {
-                company = root.shared ++> Company(name=self.name, status="pending", verified=False);
+                company = Company(name=self.name, status="pending", verified=False);
+                root.shared ++> company;
                 _ = publish_company(company);
                 user +>:UserHasCompany:+> company;
             }

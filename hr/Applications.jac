@@ -4,7 +4,7 @@ import os;
 import time;
 import concurrent.futures;
 import from datetime { datetime }
-import from jaclang.byllm.lib { Model }
+import from byllm.lib { Model }
 import from hr.domain { User, ApplicantProfile, AgentProfile, Company, Job, Application, AIEvaluationLog, Notification, ApplicantSubmitted, ApplicationFor, JobAssignedTo, CompanyPosts, UserHasCompany, UserHasAgentProfile }
 import from hr.Notifications { notify }
 import from hr.Authorization { require_role, current_app_user }
@@ -191,6 +191,7 @@ walker:pub apply_to_job {
         snapshot = _redacted_snapshot(profile_node);
         evaluation = _make_evaluation(current_job, snapshot);
         application = Application(status="applied", match_score=evaluation.score, matched_skills=evaluation.matched, missing_skills=evaluation.missing, profile_snapshot=snapshot, ai_verdict=evaluation.verdict, ai_status=evaluation.ai_status, applied_at=datetime.now().isoformat(), evaluated_at=datetime.now().isoformat());
+        root ++> application;
         profile_node +>:ApplicantSubmitted:+> application;
         application +>:ApplicationFor:+> current_job;
         _ = root ++> AIEvaluationLog(application_id=jid(application), model=os.environ.get("LLM_MODEL", "gpt-4o-mini"), input_hash=evaluation.cache_hash, output_json=evaluation.verdict, latency_ms=0, created_at=datetime.now().isoformat());

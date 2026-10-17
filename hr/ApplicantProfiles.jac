@@ -6,7 +6,7 @@ import from pypdf { PdfReader }
 import from io { BytesIO }
 import from starlette.datastructures { UploadFile }
 import from cryptography.fernet { Fernet }
-import from jaclang.byllm.lib { Model }
+import from byllm.lib { Model }
 import from hr.domain { User, ApplicantProfile, Application, ApplicantSubmitted }
 import from hr.Authorization { require_role }
 import from hr.Audit { record_audit }

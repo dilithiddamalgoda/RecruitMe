@@ -18,10 +18,13 @@ test "adjacent availability intervals are not overlapping" {
 }
 
 test "booking and cancellation release a slot for reuse" {
-    agent = root ++> AgentProfile(name="Ari Patel", email="ari@example.test");
+    agent = AgentProfile(name="Ari Patel", email="ari@example.test");
+    root ++> agent;
     start = (datetime.now() + timedelta(days=4)).isoformat();
-    slot = agent ++> AgentAvailability(start=start, end=(datetime.now() + timedelta(days=4, hours=1)).isoformat(), timezone="UTC", is_booked=False);
-    interview = root ++> Interview(slot=slot.start, status="scheduled");
+    slot = AgentAvailability(start=start, end=(datetime.now() + timedelta(days=4, hours=1)).isoformat(), timezone="UTC", is_booked=False);
+    agent ++> slot;
+    interview = Interview(slot=slot.start, status="scheduled");
+    root ++> interview;
     interview +>:InterviewConductedBy:+> agent;
     slot.is_booked = True;
     assert slot.is_booked;
@@ -32,8 +35,10 @@ test "booking and cancellation release a slot for reuse" {
 }
 
 test "agent lookup is isolated to current app user relationship" {
-    user = root ++> User(id="interview-agent", email="agent@example.test", role="agent");
-    agent = root ++> AgentProfile(name="Morgan Chen", email="agent@example.test");
+    user = User(id="interview-agent", email="agent@example.test", role="agent");
+    root ++> user;
+    agent = AgentProfile(name="Morgan Chen", email="agent@example.test");
+    root ++> agent;
     user +>:UserHasAgentProfile:+> agent;
     resolved = _actor_agent();
     assert resolved is not None;

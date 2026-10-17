@@ -34,9 +34,12 @@ test "evaluation cache reuses a deterministic keyed input" {
 }
 
 test "application graph links are one applicant to one job" {
-    profile = root ++> ApplicantProfile(name="Taylor Quinn", email="taylor@example.test", parse_status="confirmed");
-    job = root ++> Job(title="Technical Recruiter", status="open");
-    app = root ++> Application(status="applied", profile_snapshot={"skills": ["sourcing"]});
+    profile = ApplicantProfile(name="Taylor Quinn", email="taylor@example.test", parse_status="confirmed");
+    root ++> profile;
+    job = Job(title="Technical Recruiter", status="open");
+    root ++> job;
+    app = Application(status="applied", profile_snapshot={"skills": ["sourcing"]});
+    root ++> app;
     profile +>:ApplicantSubmitted:+> app;
     app +>:ApplicationFor:+> job;
     assert len([profile ->:ApplicantSubmitted:->]) == 1;

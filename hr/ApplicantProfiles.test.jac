@@ -12,7 +12,8 @@ test "oversize upload is above the enforced limit" {
 }
 
 test "scanned resume remains failed and can be manually entered" {
-    profile = root ++> ApplicantProfile(name="Avery Stone", email="avery@example.test", parse_status="failed");
+    profile = ApplicantProfile(name="Avery Stone", email="avery@example.test", parse_status="failed");
+    root ++> profile;
     assert profile.parse_status == "failed";
     profile.name = "Avery Stone";
     profile.skills = ["Recruiting"];
@@ -23,9 +24,12 @@ test "scanned resume remains failed and can be manually entered" {
 }
 
 test "profile remains unconfirmed until explicit confirmation" {
-    profile = root ++> ApplicantProfile(name="Morgan Lee", email="morgan@example.test", parse_status="parsed");
-    _ = root ++> Job(title="Recruiting Coordinator", status="open", deadline=(datetime.now() + timedelta(days=10)).isoformat());
-    application = root ++> Application(profile_snapshot={"email": profile.email});
+    profile = ApplicantProfile(name="Morgan Lee", email="morgan@example.test", parse_status="parsed");
+    root ++> profile;
+    job = Job(title="Recruiting Coordinator", status="open", deadline=(datetime.now() + timedelta(days=10)).isoformat());
+    root ++> job;
+    application = Application(profile_snapshot={"email": profile.email});
+    root ++> application;
     assert profile.parse_status == "parsed";
     assert application.profile_snapshot["email"] == profile.email;
 }

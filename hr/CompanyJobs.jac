@@ -4,7 +4,7 @@ import from hr.Authorization { require_role }
 import from hr.Audit { log_status_change }
 import from hr.Notifications { notify_job_followers }
 import from shared.Errors { AppError, make_error }
-import from hr.RecruitmentIntegration { shared_companies, shared_jobs, publish_company, publish_job }
+import from hr.RecruitmentIntegration { shared_directory, shared_companies, shared_jobs, publish_company, publish_job }
 
 walker:pub create_company {
     has name: str;
@@ -16,7 +16,8 @@ walker:pub create_company {
         if denial is not None { report denial; disengage; }
         if len(self.name.strip()) == 0 { report make_error("INVALID_COMPANY", "Company name is required.", "name"); disengage; }
         user = [root -->][?:User][0];
-        company = root.shared ++> Company(name=self.name, description=self.description, address=self.address, status="pending");
+        company = Company(name=self.name, description=self.description, address=self.address, status="pending");
+        root.shared ++> company;
         _ = publish_company(company);
         user +>:UserHasCompany:+> company;
         report company;
@@ -110,7 +111,8 @@ walker:pub create_job {
         for owned in [actor ->:UserHasCompany:->] { if jid(owned) == self.company_id { owns_company = True; } }
         if not owns_company { report make_error("FORBIDDEN", "You can post jobs only for your company."); disengage; }
         directory = shared_directory();
-        job = directory ++> Job(title=self.title, description=self.description, category=self.category, role=self.role, available_spots=self.available_spots, salary={"min": self.salary_min, "max": self.salary_max, "currency": self.currency, "period": self.salary_period}, working_location={"type": self.location_type, "city": self.city}, employment_type=self.employment_type, experience_level=self.experience_level, must_have_skills=self.must_have_skills, nice_to_have_skills=self.nice_to_have_skills, required_skills=self.must_have_skills + self.nice_to_have_skills, deadline=self.deadline, status="open");
+        job = Job(title=self.title, description=self.description, category=self.category, role=self.role, available_spots=self.available_spots, salary={"min": self.salary_min, "max": self.salary_max, "currency": self.currency, "period": self.salary_period}, working_location={"type": self.location_type, "city": self.city}, employment_type=self.employment_type, experience_level=self.experience_level, must_have_skills=self.must_have_skills, nice_to_have_skills=self.nice_to_have_skills, required_skills=self.must_have_skills + self.nice_to_have_skills, deadline=self.deadline, status="open");
+        directory ++> job;
         _ = publish_job(job);
         company_node +>:CompanyPosts:+> job;
         _ = log_status_change(actor.id, "Job", jid(job), "draft", "open", "Job posted");
@@ -195,7 +197,7 @@ walker:pub close_job {
 def:pub check_job_open(job_id: str) -> AppError | None {
     denial = require_role(["applicant", "agent", "company_admin", "admin", "system"]);
     if denial is not None { return denial; }
-    for job in shared_jobs() {
+    for job in shared_jobs() + [root -->][?:Job] {
         if jid(job) == job_id {
             if job.status != "open" { return make_error("JOB_CLOSED", "This job is not open."); }
             try { deadline_dt = datetime.fromisoformat(job.deadline); } except ValueError { return make_error("INVALID_DEADLINE", "Job deadline is invalid.", "deadline"); }

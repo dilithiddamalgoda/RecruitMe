@@ -4,7 +4,9 @@ def:pub shared_directory() -> SharedDirectory {
     for directory in [root.shared -->][?:SharedDirectory] {
         if directory.namespace == "recruitme-global" { return directory; }
     }
-    return root.shared ++> SharedDirectory(namespace="recruitme-global");
+    dir = SharedDirectory(namespace="recruitme-global");
+    root.shared ++> dir;
+    return dir;
 }
 
 def:pub shared_companies() -> list[Company] {
