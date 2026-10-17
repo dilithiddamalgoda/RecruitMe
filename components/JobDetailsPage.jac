@@ -1,7 +1,6 @@
 import from "@jac/runtime" { useParams, Link }
-import from "@jac/runtime" { jid }
-sv import from hr.CompanyJobs { Job, get_job_by_slug }
-sv import from hr.Applications { apply_to_job }
+sv import from hr.CompanyJobs { get_job_by_slug }
+sv import from hr.Applications { apply_to_job, Job }
 cl import from .RecruitmentShell { HavenhireLayout }
 cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
 cl import from .ui.button { Button }
@@ -26,7 +25,7 @@ cl def:pub JobDetailsPage() -> JsxPage {
         loading = False;
     }
     async def apply_now {
-        if job { try { result = root spawn apply_to_job(job_id=jid(job as Job)); if result.reports and len(result.reports) > 0 { application_result = result.reports[0]; } } except Exception { message = "Sign in as an applicant with a confirmed profile to apply."; } }
+        if job { try { apply_result = root spawn apply_to_job(job_id=jid(job as Job)); if apply_result.reports and len(apply_result.reports) > 0 { application_result = apply_result.reports[0]; } } except Exception { message = "Sign in as an applicant with a confirmed profile to apply."; } }
     }
     async can with entry { await load_job(); }
     return <HavenhireLayout title={"Job details"} subtitle={"Review the role and decide whether it fits your next step."}>
