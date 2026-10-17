@@ -7,6 +7,8 @@ walker:pub seed_demo_data {
     can seed with Root entry {
         denial = require_role(["admin", "system"]);
         if denial is not None { report denial; disengage; }
+        users = [root -->][?:User];
+        if len(users) == 0 { report make_error("FORBIDDEN", "Authenticated administrator profile is required."); disengage; }
         seeded_before = False;
         for existing in [root -->][?:User] { if existing.id == "demo-admin" { seeded_before = True; } }
         if seeded_before { report {"ok": True, "seeded": False, "message": "Demo data already exists."}; disengage; }

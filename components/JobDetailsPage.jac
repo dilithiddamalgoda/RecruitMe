@@ -2,10 +2,10 @@ import from "@jac/runtime" { useParams, Link }
 sv import from hr.CompanyJobs { get_job_by_slug }
 sv import from hr.Applications { apply_to_job }
 cl import from .RecruitmentShell { HavenhireLayout }
-import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
-import from .ui.button { Button }
-import from .ui.badge { Badge }
-import from .ui.empty { Empty, EmptyHeader, EmptyTitle, EmptyDescription }
+cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
+cl import from .ui.button { Button }
+cl import from .ui.badge { Badge }
+cl import from .ui.empty { Empty, EmptyHeader, EmptyTitle, EmptyDescription }
 
 cl def:pub JobDetailsPage() -> JsxPage {
     has job: any = None;

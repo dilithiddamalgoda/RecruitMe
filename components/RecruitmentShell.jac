@@ -1,6 +1,6 @@
 import from "@jac/runtime" { Link, useLocation }
-import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
-import from .ui.button { Button }
+cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
+cl import from .ui.button { Button }
 
 cl def:pub HavenhireLayout(title: str, subtitle: str, children: any = None) -> JsxElement {
     path = useLocation().pathname;

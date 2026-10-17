@@ -6,6 +6,7 @@ import concurrent.futures;
 import from datetime { datetime }
 import from jaclang.byllm.lib { Model }
 import from hr.domain { User, ApplicantProfile, AgentProfile, Company, Job, Application, AIEvaluationLog, Notification, ApplicantSubmitted, ApplicationFor, JobAssignedTo, CompanyPosts, UserHasCompany, UserHasAgentProfile }
+import from hr.Notifications { notify }
 import from hr.Authorization { require_role }
 import from hr.Audit { log_status_change, record_audit }
 import from hr.Notifications { notify }
@@ -309,6 +310,7 @@ walker:pub update_application_status {
         denial = require_role(["agent", "company_admin"]);
         if denial is not None { report denial; disengage; }
         if self.to_status not in ["screened", "shortlisted", "interview_scheduled", "rejected", "hired"] { report make_error("INVALID_STATUS", "Unsupported application status.", "to_status"); disengage; }
+        if len(self.reason.strip()) == 0 { report make_error("REASON_REQUIRED", "Provide a reason for the status change.", "reason"); disengage; }
         app: Application | None = None;
         for candidate in [root -->][?:Application] { if jid(candidate) == self.application_id { app = candidate; } }
         if app is None { report make_error("APPLICATION_NOT_FOUND", "Application was not found."); disengage; }

@@ -1,11 +1,11 @@
 import from "@jac/runtime" { Link }
 sv import from hr.CompanyJobs { search_jobs }
 cl import from .RecruitmentShell { HavenhireLayout, SectionCard }
-import from .ui.input { Input }
-import from .ui.button { Button }
-import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
-import from .ui.badge { Badge }
-import from .ui.empty { Empty, EmptyHeader, EmptyTitle, EmptyDescription }
+cl import from .ui.input { Input }
+cl import from .ui.button { Button }
+cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
+cl import from .ui.badge { Badge }
+cl import from .ui.empty { Empty, EmptyHeader, EmptyTitle, EmptyDescription }
 
 cl def:pub JobSearchPage() -> JsxPage {
     has keyword: str = "";
@@ -26,8 +26,11 @@ cl def:pub JobSearchPage() -> JsxPage {
         error = "";
         try {
             response: any = await search_jobs(keyword, category, location, 0.0, 0.0, employment_type, page, 12);
-            jobs = response["items"] as list[any];
-            total = response["total"] as int;
+            if response["reports"] {
+                result: any = response["reports"][0];
+                jobs = result["items"] as list[any];
+                total = result["total"] as int;
+            } else { error = "No search response was returned."; }
         } except Exception { error = "Sign in as an applicant to search jobs."; }
         loading = False;
     }

@@ -2,12 +2,12 @@ sv import from hr.ApplicantProfiles { get_my_profile, update_profile, confirm_pr
 sv import from hr.Notifications { get_my_notifications, mark_read }
 sv import from hr.CompanyJobs { follow_company, unfollow_company }
 cl import from .RecruitmentShell { HavenhireLayout }
-import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
-import from .ui.button { Button }
-import from .ui.input { Input }
-import from .ui.textarea { Textarea }
-import from .ui.badge { Badge }
-import from .ui.empty { Empty, EmptyHeader, EmptyTitle, EmptyDescription }
+cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
+cl import from .ui.button { Button }
+cl import from .ui.input { Input }
+cl import from .ui.textarea { Textarea }
+cl import from .ui.badge { Badge }
+cl import from .ui.empty { Empty, EmptyHeader, EmptyTitle, EmptyDescription }
 
 cl def:pub ApplicantDashboardPage() -> JsxPage {
     has profile: any = None;

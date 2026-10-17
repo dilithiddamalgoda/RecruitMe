@@ -1,10 +1,11 @@
-import from "@jac/runtime" { jacLogin, jacSignup, useNavigate }
+import from "@jac/runtime" { jacLogin, useNavigate }
+sv import from hr.Auth { register }
 cl import from .RecruitmentShell { HavenhireLayout }
-import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
-import from .ui.input { Input }
-import from .ui.button { Button }
-import from .ui.select { Select, SelectTrigger, SelectValue, SelectContent, SelectItem }
-import from .ui.field { Field, FieldLabel, FieldGroup }
+cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
+cl import from .ui.input { Input }
+cl import from .ui.button { Button }
+cl import from .ui.select { Select, SelectTrigger, SelectValue, SelectContent, SelectItem }
+cl import from .ui.field { Field, FieldLabel, FieldGroup }
 
 cl def:pub AuthPage() -> JsxPage {
     has email: str = "";
@@ -22,10 +23,9 @@ cl def:pub AuthPage() -> JsxPage {
         busy = True;
         message = "";
         if mode == "register" {
-            registration: dict | None = None;
+            registration: any = await register(email, password, role, display_name);
             login_ok: bool = False;
-            registration = await jacSignup(email, password);
-            if not registration["success"] { message = str(registration["error"] or "Registration failed."); busy = False; return; }
+            if registration["error"] { message = str(registration["message"]); busy = False; return; }
             login_ok = await jacLogin(email, password);
             if not login_ok { message = "Registration succeeded but sign in did not. Try signing in."; busy = False; return; }
         } else {

@@ -86,7 +86,7 @@ walker:pub schedule_interview {
         assigned = False;
         if actor_agent is not None { for assigned_agent in [job_node ->:JobAssignedTo:->] { if jid(assigned_agent) == jid(actor_agent as AgentProfile) { assigned = True; } } }
         if user.role == "company_admin" and not job_owner { report make_error("FORBIDDEN", "Company can schedule interviews only for its own jobs."); disengage; }
-        if user.role == "agent" and not assigned { report make_error("FORBIDDEN", "Agent must be assigned to the job."); disengage; }
+        if not assigned { report make_error("FORBIDDEN", "Scheduling requires an agent assigned to the job."); disengage; }
         if app_node.match_score < job_node.threshold {
             if self.override_reason.strip() == "" { report make_error("THRESHOLD_REQUIRED", "A reasoned agent override is required below the suitability threshold."); disengage; }
             if user.role != "agent" { report make_error("FORBIDDEN", "Only the assigned agent can override the suitability threshold."); disengage; }
@@ -94,6 +94,11 @@ walker:pub schedule_interview {
         }
         slot: AgentAvailability | None = None;
         for candidate in [root -->][?:AgentAvailability] { if jid(candidate) == self.slot_id { slot = candidate; } }
+        if user.role == "agent" and actor_agent is not None {
+            owned_slot = False;
+            for own_slot in [(actor_agent as AgentProfile) ->:AgentHasSlot:->] { if jid(own_slot) == self.slot_id { owned_slot = True; } }
+            if not owned_slot { report make_error("FORBIDDEN", "Agent may book only their own availability slots."); disengage; }
+        }
         if slot is None { report make_error("SLOT_NOT_FOUND", "Availability slot was not found."); disengage; }
         slot_node = slot as AgentAvailability;
         if slot_node.is_booked { report make_error("SLOT_BOOKED", "This availability slot is already booked."); disengage; }
