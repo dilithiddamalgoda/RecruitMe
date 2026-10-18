@@ -1,5 +1,5 @@
 import from "@jac/runtime" { useNavigate as authPageNavigate, Link }
-cl import from .RecruitmentShell { HavenhireLayout as AuthPageLayout }
+cl import from .RecruitmentShell { RecruitMeLayout as AuthPageLayout }
 cl import from .ui.card { Card as AuthCard, CardHeader as AuthCardHeader, CardTitle as AuthCardTitle, CardDescription as AuthCardDescription, CardContent as AuthCardContent }
 cl import from .ui.input { Input as AuthInput }
 cl import from .ui.button { Button as AuthButton }

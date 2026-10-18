@@ -1,7 +1,7 @@
 sv import from hr.ApplicantProfiles { get_my_profile, update_profile, confirm_profile, delete_my_data, import_linkedin_pdf }
 sv import from hr.Notifications { get_my_notifications, mark_read }
 sv import from hr.CompanyJobs { follow_company, unfollow_company }
-cl import from .RecruitmentShell { HavenhireLayout }
+cl import from .RecruitmentShell { RecruitMeLayout }
 cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
 cl import from .ui.button { Button }
 cl import from .ui.input { Input }
@@ -54,7 +54,7 @@ cl def:pub ApplicantDashboardPage() -> JsxPage {
     async def upload_resume { message = "Secure PDF import is available through the authenticated resume-import endpoint. Review parsed profile data and confirm it before applying."; }
     async can with entry { await load_dashboard(); }
     status_label = "Confirmed" if profile and profile["parse_status"] == "confirmed" else ("Needs review" if profile and profile["parse_status"] == "parsed" else "Incomplete");
-    return <HavenhireLayout title="Applicant workspace" subtitle="Keep your profile current and stay on top of application updates.">
+    return <RecruitMeLayout title="Applicant workspace" subtitle="Keep your profile current and stay on top of application updates.">
         {if loading { <Card className="p-6 text-sm text-muted-foreground">{"Loading your profile and notifications…"}</Card> }}
         {if message { <p className="rounded-lg border bg-card px-4 py-3 text-sm">{message}</p> }}
         <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
@@ -73,5 +73,5 @@ cl def:pub ApplicantDashboardPage() -> JsxPage {
                 <Card className="shadow-sm"><CardHeader><CardTitle>{"Followed companies"}</CardTitle><CardDescription>{"Job alerts from companies you follow."}</CardDescription></CardHeader><CardContent><p className="text-sm text-muted-foreground">{"Follow a company from its job page to receive new-role notifications."}</p></CardContent></Card>
             </div>
         </div>
-    </HavenhireLayout>;
+    </RecruitMeLayout>;
 }

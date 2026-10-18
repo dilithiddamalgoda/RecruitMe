@@ -14,12 +14,11 @@ api_key = "${OPENAI_API_KEY:-}"
 [jac-shadcn]
 style = "nova"
 baseColor = "neutral"
-theme = "amber"
+theme = "teal"
 font = "inter"
-radius = "default"
+radius = "large"
 menuAccent = "subtle"
 menuColor = "default"
-
 [dependencies]
 pypdf = ">=5.0.0"
 cryptography = ">=44.0.0"

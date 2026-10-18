@@ -1,6 +1,6 @@
 import from "@jac/runtime" { Link }
 sv import from hr.CompanyJobs { Job, search_jobs }
-cl import from .RecruitmentShell { HavenhireLayout, SectionCard }
+cl import from .RecruitmentShell { RecruitMeLayout, SectionCard }
 cl import from .ui.input { Input }
 cl import from .ui.button { Button }
 cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
@@ -41,7 +41,7 @@ cl def:pub JobSearchPage() -> JsxPage {
         loading = False;
     }
     async can with entry { await run_search(); }
-    return <HavenhireLayout title="Find your next role" subtitle="Explore open opportunities and filter for what matters to you.">
+    return <RecruitMeLayout title="Find your next role" subtitle="Explore open opportunities and filter for what matters to you.">
         <Card className="shadow-sm"><CardContent className="grid gap-3 pt-6 sm:grid-cols-2 lg:grid-cols-5">
             <label className="flex flex-col gap-1 text-sm font-medium">{"Keyword"}<Input value={keyword} onChange={change_keyword} placeholder="Role, skill, or company" /></label>
             <label className="flex flex-col gap-1 text-sm font-medium">{"Category"}<Input value={category} onChange={change_category} placeholder="Technology" /></label>
@@ -64,5 +64,5 @@ cl def:pub JobSearchPage() -> JsxPage {
             }}
         </div>
         <div className="flex justify-end gap-2"><Button variant="outline" disabled={page <= 1} onClick={lambda { page = page - 1; run_search(); }}>{"Previous"}</Button><span className="self-center px-2 text-sm text-muted-foreground">{"Page " + str(page)}</span><Button variant="outline" disabled={len(jobs) < 12} onClick={lambda { page = page + 1; run_search(); }}>{"Next"}</Button></div>
-    </HavenhireLayout>;
+    </RecruitMeLayout>;
 }

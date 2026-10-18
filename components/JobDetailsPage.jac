@@ -1,7 +1,7 @@
 import from "@jac/runtime" { useParams, Link }
 sv import from hr.CompanyJobs { Job, get_job_by_slug }
 sv import from hr.Applications { apply_to_job }
-cl import from .RecruitmentShell { HavenhireLayout }
+cl import from .RecruitmentShell { RecruitMeLayout }
 cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
 cl import from .ui.button { Button }
 cl import from .ui.badge { Badge }
@@ -28,7 +28,7 @@ cl def:pub JobDetailsPage() -> JsxPage {
         if job { try { result = root spawn apply_to_job(job_id=str(job["id"])); if result.reports and len(result.reports) > 0 { application_result = result.reports[0]; } } except Exception { message = "Sign in as an applicant with a confirmed profile to apply."; } }
     }
     async can with entry { await load_job(); }
-    return <HavenhireLayout title={"Job details"} subtitle={"Review the role and decide whether it fits your next step."}>
+    return <RecruitMeLayout title={"Job details"} subtitle={"Review the role and decide whether it fits your next step."}>
         {if loading { <Card className="p-6 text-sm text-muted-foreground">{"Loading job details…"}</Card> }}
         {if not loading and not job { <Empty className="rounded-xl border bg-card py-12"><EmptyHeader><EmptyTitle>{"Job not found"}</EmptyTitle><EmptyDescription>{"This role may have closed or the link may be incorrect."}</EmptyDescription></EmptyHeader><Link to="/jobs" className="mx-auto mt-4 inline-flex text-sm font-medium text-primary">{"Back to jobs"}</Link></Empty> }}
         {if job {
@@ -40,5 +40,5 @@ cl def:pub JobDetailsPage() -> JsxPage {
             </div>
         }}
         {if len(message) > 0 { <p className="text-sm text-destructive">{message}</p> }}
-    </HavenhireLayout>;
+    </RecruitMeLayout>;
 }
