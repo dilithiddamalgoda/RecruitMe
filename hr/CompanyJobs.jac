@@ -297,7 +297,7 @@ walker:pub get_job_by_slug {
         if denial is not None { report denial; disengage; }
         for job in shared_jobs() {
             candidate = job.title.lower().replace(" ", "-");
-            if candidate == self.slug or jid(job) == self.slug { report job; disengage; }
+            if candidate == self.slug or jid(job) == self.slug { report {"id": jid(job), "title": job.title, "description": job.description, "category": job.category, "role": job.role, "available_spots": job.available_spots, "salary": job.salary, "working_location": job.working_location, "employment_type": job.employment_type, "experience_level": job.experience_level, "required_skills": job.required_skills, "must_have_skills": job.must_have_skills, "nice_to_have_skills": job.nice_to_have_skills, "min_experience_years": job.min_experience_years, "education_requirement": job.education_requirement, "threshold": job.threshold, "deadline": job.deadline, "status": job.status}; disengage; }
         }
         report make_error("JOB_NOT_FOUND", "Job was not found.");
     }
