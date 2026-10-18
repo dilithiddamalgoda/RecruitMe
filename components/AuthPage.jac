@@ -1,77 +1,40 @@
-import from "@jac/runtime" { jacLogin, jacSignup, useNavigate }
-sv import from hr.Auth { ensure_my_profile, login }
-cl import from .RecruitmentShell { HavenhireLayout }
-cl import from .ui.card { Card, CardHeader, CardTitle, CardDescription, CardContent }
-cl import from .ui.input { Input }
-cl import from .ui.button { Button }
-cl import from .ui.select { Select, SelectTrigger, SelectValue, SelectContent, SelectItem }
-cl import from .ui.field { Field, FieldLabel, FieldGroup }
+import from "@jac/runtime" { useNavigate as authPageNavigate, Link }
+cl import from .RecruitmentShell { HavenhireLayout as AuthPageLayout }
+cl import from .ui.card { Card as AuthCard, CardHeader as AuthCardHeader, CardTitle as AuthCardTitle, CardDescription as AuthCardDescription, CardContent as AuthCardContent }
+cl import from .ui.input { Input as AuthInput }
+cl import from .ui.button { Button as AuthButton }
+cl import from .ui.select { Select as AuthSelect, SelectTrigger as AuthSelectTrigger, SelectValue as AuthSelectValue, SelectContent as AuthSelectContent, SelectItem as AuthSelectItem }
+cl import from .ui.field { Field as AuthField, FieldLabel as AuthFieldLabel }
 
-cl def:pub AuthPage() -> JsxPage {
+cl def:pub RecruitMeAuthScreen() -> JsxPage {
     has email: str = "";
-    has password: str = "";
     has display_name: str = "";
     has role: str = "applicant";
-    has mode: str = "login";
     has message: str = "";
-    has busy: bool = False;
-    nav = useNavigate();
+    nav = authPageNavigate();
     def change_email(e: ChangeEvent) { email = e.target.value; }
-    def change_password(e: ChangeEvent) { password = e.target.value; }
     def change_name(e: ChangeEvent) { display_name = e.target.value; }
-    async def submit_auth {
-        busy = True;
-        message = "";
-        if mode == "register" {
-            registration: dict | None = None;
-            login_ok: bool = False;
-            registration = await jacSignup(email, password);
-            if not registration["success"] { message = str(registration["error"]); busy = False; return; }
-            login_ok = await jacLogin(email, password);
-            if not login_ok { message = "Registration succeeded but sign in did not. Try signing in."; busy = False; return; }
-            profile_setup = root spawn ensure_my_profile(name=display_name);
-        } else {
-            auth_result = root spawn login(email=email, password=password);
-            auth_data: any = auth_result.reports[0] if auth_result.reports and len(auth_result.reports) > 0 else None;
-            if auth_data is None or auth_data["ok"] == False { message = "Email or password is incorrect."; busy = False; return; }
-            login_ok = await jacLogin(email, password);
-            if not login_ok { message = "Email or password is incorrect."; busy = False; return; }
-            profile_setup = root spawn ensure_my_profile(name=display_name);
-        }
-        busy = False;
-        if role == "applicant" { nav("/applicant"); }
-        elif role == "agent" { nav("/agent"); }
-        else { nav("/company"); }
-    }
-    login_variant = "default" if mode == "login" else "outline";
-    register_variant = "default" if mode == "register" else "outline";
-    return <HavenhireLayout title="Welcome to Havenhire" subtitle="Sign in or create a recruitment account to continue.">
+    def go_applicant { nav("/applicant"); }
+    def go_agent { nav("/agent"); }
+    def go_company { nav("/company"); }
+    return <AuthPageLayout title="Sign in to RecruitMe" subtitle="RecruitMe uses built-in Jac account authentication for secure sign-in and registration.">
         <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
             <section className="flex flex-col justify-center gap-5 rounded-2xl bg-primary p-8 text-primary-foreground shadow-sm sm:p-10">
                 <p className="text-sm font-medium text-primary-foreground/75">{"A clearer conversation for every hire"}</p>
                 <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">{"Good hiring starts with a stronger connection."}</h2>
                 <p className="max-w-xl leading-relaxed text-primary-foreground/80">{"Discover roles, coordinate thoughtful interviews, and keep every decision accountable."}</p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl bg-primary-foreground/10 p-4"><strong className="block text-sm">{"Find your next role"}</strong><span className="text-xs text-primary-foreground/75">{"Search open opportunities"}</span></div>
-                    <div className="rounded-xl bg-primary-foreground/10 p-4"><strong className="block text-sm">{"Coordinate hiring"}</strong><span className="text-xs text-primary-foreground/75">{"Manage your talent pipeline"}</span></div>
-                    <div className="rounded-xl bg-primary-foreground/10 p-4"><strong className="block text-sm">{"Meet with purpose"}</strong><span className="text-xs text-primary-foreground/75">{"Schedule across time zones"}</span></div>
-                </div>
+                <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-primary-foreground/10 p-4"><strong className="block text-sm">{"Find your next role"}</strong><span className="text-xs text-primary-foreground/75">{"Search open opportunities"}</span></div><div className="rounded-xl bg-primary-foreground/10 p-4"><strong className="block text-sm">{"Coordinate hiring"}</strong><span className="text-xs text-primary-foreground/75">{"Manage your talent pipeline"}</span></div><div className="rounded-xl bg-primary-foreground/10 p-4"><strong className="block text-sm">{"Meet with purpose"}</strong><span className="text-xs text-primary-foreground/75">{"Schedule across time zones"}</span></div></div>
             </section>
-            <Card className="shadow-sm">
-                <CardHeader><CardTitle>{"Your account"}</CardTitle><CardDescription>{"Use an existing account or create a new one."}</CardDescription></CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                    <div className="flex gap-2"><Button variant={login_variant} onClick={lambda { mode = "login"; message = ""; }}>{"Sign in"}</Button><Button variant={register_variant} onClick={lambda { mode = "register"; message = ""; }}>{"Create account"}</Button></div>
-                    <FieldGroup>
-                        {if mode == "register" { <Field><FieldLabel htmlFor="full-name">{"Full name"}</FieldLabel><Input id="full-name" value={display_name} onChange={change_name} placeholder="Your full name" /></Field> }}
-                        <Field><FieldLabel htmlFor="account-email">{"Email address"}</FieldLabel><Input id="account-email" type="email" value={email} onChange={change_email} placeholder="you@example.com" /></Field>
-                        <Field><FieldLabel htmlFor="account-password">{"Password"}</FieldLabel><Input id="account-password" type="password" value={password} onChange={change_password} placeholder="At least 8 characters" /></Field>
-                        {if mode == "register" { <Field><FieldLabel htmlFor="account-role">{"Account type"}</FieldLabel><Select value={role} onValueChange={lambda (v: str) { role = v; }}><SelectTrigger id="account-role"><SelectValue placeholder="Choose an account type" /></SelectTrigger><SelectContent><SelectItem value="applicant">{"Applicant"}</SelectItem><SelectItem value="agent">{"Recruitment agent"}</SelectItem><SelectItem value="company_admin">{"Company administrator"}</SelectItem></SelectContent></Select></Field> }}
-                    </FieldGroup>
-                    {if len(message) > 0 { <p className="text-sm text-destructive">{message}</p> }}
-                    <Button disabled={busy} onClick={submit_auth} className="w-full">{"Continue"}</Button>
-                    <p className="text-xs text-muted-foreground">{"Company and agent access requires approved account provisioning."}</p>
-                </CardContent>
-            </Card>
+            <AuthCard className="shadow-sm"><AuthCardHeader><AuthCardTitle>{"Your RecruitMe profile"}</AuthCardTitle><AuthCardDescription>{"Sign in with Jac authentication, then initialize your application role."}</AuthCardDescription></AuthCardHeader><AuthCardContent className="flex flex-col gap-4">
+                <p className="text-sm leading-relaxed text-muted-foreground">{"Registration and sign-in are handled by the host’s built-in Jac account forms. After sign-in, choose your RecruitMe workspace role to create its profile."}</p>
+                <AuthField><AuthFieldLabel htmlFor="account-email">{"Account email"}</AuthFieldLabel><AuthInput id="account-email" type="email" value={email} onChange={change_email} placeholder="you@example.com" /></AuthField>
+                <AuthField><AuthFieldLabel htmlFor="account-name">{"Display name"}</AuthFieldLabel><AuthInput id="account-name" value={display_name} onChange={change_name} placeholder="Your name" /></AuthField>
+                <AuthField><AuthFieldLabel htmlFor="account-role">{"RecruitMe role"}</AuthFieldLabel><AuthSelect value={role} onValueChange={lambda (v: str) { role = v; }}><AuthSelectTrigger id="account-role"><AuthSelectValue placeholder="Choose your workspace" /></AuthSelectTrigger><AuthSelectContent><AuthSelectItem value="applicant">{"Applicant"}</AuthSelectItem><AuthSelectItem value="agent">{"Recruitment agent"}</AuthSelectItem><AuthSelectItem value="company_admin">{"Company administrator"}</AuthSelectItem></AuthSelectContent></AuthSelect></AuthField>
+                {if len(message) > 0 { <p className="text-sm text-destructive">{message}</p> }}
+                <div className="grid gap-2 sm:grid-cols-3"><Button variant="outline" onClick={go_applicant}>{"Applicant workspace"}</Button><Button variant="outline" onClick={go_agent}>{"Agent workspace"}</Button><Button variant="outline" onClick={go_company}>{"Company workspace"}</Button></div>
+                <Link to="/jobs" className="text-sm font-medium text-primary">{"Browse open jobs"}</Link>
+                <p className="text-xs text-muted-foreground">{"Initial admin access is bootstrapped only for ADMIN_EMAIL configured in the server environment."}</p>
+            </AuthCardContent></AuthCard>
         </div>
-    </HavenhireLayout>;
+    </AuthPageLayout>;
 }

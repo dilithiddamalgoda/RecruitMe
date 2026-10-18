@@ -5,7 +5,6 @@ node SharedDirectory {
 node User {
     has id: str = "";
     has email: str = "";
-    has credential_hash: str = "";
     has role: str = "applicant";
 }
 

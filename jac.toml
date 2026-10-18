@@ -1,7 +1,7 @@
 [project]
 name = "recruitme"
 version = "0.0.1"
-description = "Empty Jac project - start from scratch"
+description = "Recruitment workspace for applicants, hiring teams, and agents."
 entry-point = "main.jac"
 kind = "web-app"
 
@@ -83,9 +83,9 @@ keywords = "recruitment, hiring, candidates, jac"
 author = "RecruitMe"
 theme_color = "#dc7702"
 og_type = "website"
-og_title = "A blank canvas"
-og_description = "A minimal jac-shadcn starter."
-og_site_name = "Blank canvas"
+og_title = "RecruitMe"
+og_description = "Recruitment workspace for applicants, hiring teams, and agents."
+og_site_name = "RecruitMe"
 
 
 [scale]

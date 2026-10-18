@@ -1,4 +1,4 @@
-import from hr.Auth { register, login }
+import from hr.Auth { ensure_my_profile, bootstrap_admin }
 import from hr.CompanyJobs { create_company, verify_company, add_agent_to_company, create_job, assign_agent_to_job, close_job, auto_close_jobs, check_job_open, search_jobs, get_job_by_id, get_job_by_slug, follow_company, unfollow_company }
 import from hr.Notifications { notify, notify_job_followers, get_my_notifications, mark_read }
 import from hr.ApplicantProfiles { import_linkedin_pdf, update_profile, confirm_profile, get_my_profile, delete_my_data }
@@ -10,7 +10,7 @@ import from hr.RecruitmentIntegration { shared_directory, shared_companies, shar
 cl {
     import ".styles.global.css";
     import from "@jac/runtime" { Router, Routes, Route, Navigate }
-    import from .components.AuthPage { AuthPage }
+    import from .components.AuthPage { RecruitMeAuthScreen }
     import from .components.JobSearchPage { JobSearchPage }
     import from .components.JobDetailsPage { JobDetailsPage }
     import from .components.ApplicantDashboardPage { ApplicantDashboardPage }
@@ -20,7 +20,7 @@ cl {
     def:pub app() -> JsxElement {
         return <Router><Routes>
             <Route path="/" element={<Navigate to="/jobs" replace={True} />} />
-            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth" element={<RecruitMeAuthScreen />} />
             <Route path="/jobs" element={<JobSearchPage />} />
             <Route path="/jobs/:slug" element={<JobDetailsPage />} />
             <Route path="/applicant" element={<ApplicantDashboardPage />} />
